@@ -62,143 +62,141 @@
 <script>
     // 1. YOUR FIREBASE CONFIGURATION
     // Replace these placeholder values with your project's web app credentials
-	const firebaseConfig = {
-	  apiKey: "AIzaSyDLDsHOG05GiK7_M6qpOPcvrWGfW23b9JA",
-	  authDomain: "slua-train.firebaseapp.com",
-	  projectId: "slua-train",
-	  storageBucket: "slua-train.firebasestorage.app",
-	  messagingSenderId: "921691212964",
-	  appId: "1:921691212964:web:ef8bf38225da3dea28ea31",
-	  measurementId: "G-9D798G6HNV"
-	};
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
+    };
 
-	firebase.initializeApp(firebaseConfig);
-	    const db = firebase.database();
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-	    const gameRef = db.ref('trainGame');
-	    const participantsRef = db.ref('trainGame/participants');
+    // References
+    const gameRef = db.ref('trainGame');
+    const participantsRef = db.ref('trainGame/participants');
 
-	    const nameForm = document.getElementById('name-form');
-	    const timerDisplay = document.getElementById('timer-display');
-	    const participantListUI = document.getElementById('participant-list');
-	    const adminStartBtn = document.getElementById('admin-start-btn');
-	    const adminPassInput = document.getElementById('admin-password');
+    // UI Elements
+    const nameForm = document.getElementById('name-form');
+    const timerDisplay = document.getElementById('timer-display');
+    const participantListUI = document.getElementById('participant-list');
+    const adminStartBtn = document.getElementById('admin-start-btn');
+    const adminPassInput = document.getElementById('admin-password');
 
-	    // Sync Data across all devices
-	    gameRef.on('value', (snapshot) => {
-	        const data = snapshot.val() || {};
-	        if (data.timeLeft !== undefined) {
-	            let mins = Math.floor(data.timeLeft / 60);
-	            let secs = data.timeLeft % 60;
-	            timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-	        }
-	        if (data.gameState === 'active') {
-	            nameForm.classList.remove('hidden');
-	            document.getElementById('status-msg').innerText = "Game is LIVE! Enter your name.";
-	        } else {
-	            nameForm.classList.add('hidden');
-	        }
-	        if (data.conductor) {
-	            document.getElementById('results-page').classList.remove('hidden');
-	            document.getElementById('display-conductor').innerText = data.conductor;
-	            document.getElementById('admin-choose-cond').classList.add('hidden');
-	            document.getElementById('admin-choose-vip').classList.remove('hidden');
-	        }
-	        if (data.vip) {
-	            document.getElementById('display-vip').innerText = data.vip;
-	            document.getElementById('admin-choose-vip').classList.add('hidden');
-	        }
-	    });
-
-	    participantsRef.on('value', (snapshot) => {
-	        participantListUI.innerHTML = "";
-	        snapshot.forEach((child) => {
-	            const li = document.createElement('li');
-	            li.textContent = "👤 " + child.val();
-	            participantListUI.appendChild(li);
-	        });
-	    });
-
-	    // JOIN GAME WITH CASE-INSENSITIVE VALIDATION
-	    nameForm.addEventListener('submit', (e) => {
-	        e.preventDefault();
-	        const nameInput = document.getElementById('nickname');
-	        const rawName = nameInput.value.trim();
-	        const lowerName = rawName.toLowerCase(); // Convert input to lowercase for checking
+    // 2. LISTEN FOR DATA UPDATES (This updates everyone's screen)
+    gameRef.on('value', (snapshot) => {
+        const data = snapshot.val() || {};
         
-	        participantsRef.once('value', (snap) => {
-	            const currentParticipants = [];
-	            snap.forEach(c => { currentParticipants.push(c.val()); });
-            
-	            // Check if lowercase version already exists in the list
-	            const isDuplicate = currentParticipants.some(p => p.toLowerCase() === lowerName);
-            
-	            if (isDuplicate) {
-	                alert(`The name "${rawName}" (or a version of it) is already taken!`);
-	            } else {
-	                participantsRef.push(rawName); // Save original casing
-	                nameInput.value = "";
-	            }
-	        });
-	    });
+        // Update Timer
+        if (data.timeLeft !== undefined) {
+            let mins = Math.floor(data.timeLeft / 60);
+            let secs = data.timeLeft % 60;
+            timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
 
-	    // Admin: Start Game (Password: reaperbalamyt)
-	    adminStartBtn.addEventListener('click', () => {
-	        if (adminPassInput.value !== "reaperbalamyt") return alert("Wrong Password!");
+        // Show/Hide Form based on game state
+        if (data.gameState === 'active') {
+            nameForm.classList.remove('hidden');
+            document.getElementById('status-msg').innerText = "Game is LIVE! Enter your name.";
+        } else {
+            nameForm.classList.add('hidden');
+        }
+
+        // Update Results
+        if (data.conductor) {
+            document.getElementById('results-page').classList.remove('hidden');
+            document.getElementById('display-conductor').innerText = data.conductor;
+            if (data.gameState === 'finished') {
+                document.getElementById('admin-choose-cond').classList.add('hidden');
+                document.getElementById('admin-choose-vip').classList.remove('hidden');
+            }
+        }
+        if (data.vip) {
+            document.getElementById('display-vip').innerText = data.vip;
+        }
+    });
+
+    // Listen for Participant List
+    participantsRef.on('value', (snapshot) => {
+        participantListUI.innerHTML = "";
+        snapshot.forEach((child) => {
+            const li = document.createElement('li');
+            li.textContent = "👤 " + child.val();
+            participantListUI.appendChild(li);
+        });
+    });
+
+    // 3. ACTIONS
+    // Join Game
+    nameForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('nickname').value.trim();
         
-	        let seconds = 180;
-	        gameRef.update({ 
-	            gameState: 'active', 
-	            timeLeft: seconds,
-	            conductor: null,
-	            vip: null 
-	        });
+        participantsRef.once('value', (snap) => {
+            let exists = false;
+            snap.forEach(c => { if(c.val() === name) exists = true; });
+            
+            if (exists) {
+                alert("Name already taken!");
+            } else {
+                participantsRef.push(name);
+                document.getElementById('nickname').value = "";
+            }
+        });
+    });
 
-	        let interval = setInterval(() => {
-	            seconds--;
-	            gameRef.update({ timeLeft: Math.max(seconds, 0) });
-	            if (seconds <= 0) {
-	                clearInterval(interval);
-	                gameRef.update({ gameState: 'finished' });
-	            }
-	        }, 1000);
-	    });
+    // Admin: Start Game
+    adminStartBtn.addEventListener('click', () => {
+        if (adminPassInput.value !== "reaperbalamyt") return alert("Wrong Password!");
+        
+        let seconds = 180;
+        gameRef.update({ gameState: 'active', timeLeft: seconds });
 
-	    // Admin: Choose Conductor
-	    document.getElementById('admin-choose-cond').addEventListener('click', () => {
-	        participantsRef.once('value', (snap) => {
-	            if(!snap.exists()) return alert("No players!");
-	            const list = Object.values(snap.val());
-	            const winner = list[Math.floor(Math.random() * list.length)];
-	            gameRef.update({ conductor: winner });
-	        });
-	    });
+        let interval = setInterval(() => {
+            seconds--;
+            gameRef.update({ timeLeft: Math.max(seconds, 0) });
+            if (seconds <= 0) {
+                clearInterval(interval);
+                gameRef.update({ gameState: 'finished' });
+                document.getElementById('admin-choose-cond').classList.remove('hidden');
+            }
+        }, 1000);
+    });
 
-	    // Admin: Choose VIP
-	    document.getElementById('admin-choose-vip').addEventListener('click', () => {
-	        participantsRef.once('value', (snap) => {
-	            const list = Object.values(snap.val());
-	            gameRef.once('value', (gSnap) => {
-	                const cond = gSnap.val().conductor;
-	                const remaining = list.filter(n => n !== cond);
-	                if(remaining.length === 0) return alert("No one left for VIP!");
-	                const winner = remaining[Math.floor(Math.random() * remaining.length)];
-	                gameRef.update({ vip: winner });
-	            });
-	        });
-	    });
+    // Admin: Choose Conductor
+    document.getElementById('admin-choose-cond').addEventListener('click', () => {
+        participantsRef.once('value', (snap) => {
+            const list = Object.values(snap.val() || {});
+            const winner = list[Math.floor(Math.random() * list.length)];
+            gameRef.update({ conductor: winner });
+        });
+    });
 
-	    // Admin: Full Reset (Password: balamytreaper)
-	    document.getElementById('admin-restart').addEventListener('click', () => {
-	        if (adminPassInput.value === "balamytreaper") {
-	            gameRef.set({ gameState: 'waiting', timeLeft: 180 });
-	            participantsRef.remove();
-	            location.reload(); 
-	        } else {
-	            alert("Enter restart password 'balamytreaper' in the box!");
-	        }
-	    });
-	</script>
-		
+    // Admin: Choose VIP
+    document.getElementById('admin-choose-vip').addEventListener('click', () => {
+        participantsRef.once('value', (snap) => {
+            const list = Object.values(snap.val() || {});
+            gameRef.once('value', (gSnap) => {
+                const conductor = gSnap.val().conductor;
+                const remaining = list.filter(n => n !== conductor);
+                const winner = remaining[Math.floor(Math.random() * remaining.length)];
+                gameRef.update({ vip: winner });
+            });
+        });
+    });
+
+    // Admin: Full Reset
+    document.getElementById('admin-restart').addEventListener('click', () => {
+        if (document.getElementById('admin-password').value === "balamytreaper") {
+            gameRef.set({ gameState: 'waiting', timeLeft: 180 });
+        } else {
+            alert("Enter restart password 'balamytreaper' in the box!");
+        }
+    });
+</script>
+
 </body>
 </html>
