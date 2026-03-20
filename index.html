@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Game Live</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
+        .main-wrapper { display: flex; max-width: 900px; margin: auto; gap: 20px; }
+        .container, .sidebar { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .container { flex: 2; text-align: center; }
+        .sidebar { flex: 1; max-height: 80vh; overflow-y: auto; }
+        .timer { font-size: 2.5rem; font-weight: bold; color: #d9534f; margin: 15px 0; }
+        .hidden { display: none !important; }
+        input, button { padding: 12px; margin: 5px; border-radius: 6px; border: 1px solid #ddd; width: 90%; }
+        button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; }
+        .results { margin-top: 20px; padding: 15px; border: 2px solid #28a745; background: #e9f7ef; border-radius: 8px; }
+        ul { list-style: none; padding: 0; text-align: left; }
+        li { padding: 8px; border-bottom: 1px solid #eee; }
+        .admin-controls { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+    <div class="container">
+        <h1>🚂 Train Game Live</h1>
+
+        <div id="status-msg">Waiting for Admin to start...</div>
+        <div class="timer" id="timer-display">03:00</div>
+
+        <form id="name-form" class="hidden">
+            <input type="text" id="nickname" placeholder="Your Nickname" required>
+            <button type="submit">Join Game</button>
+        </form>
+
+        <div id="results-page" class="hidden">
+            <div class="results">
+                <h3>🏆 Results</h3>
+                <p><strong>Conductor:</strong> <span id="display-conductor">-</span></p>
+                <p><strong>VIP:</strong> <span id="display-vip">-</span></p>
+            </div>
+        </div>
+
+        <div class="admin-controls">
+            <input type="password" id="admin-password" placeholder="Admin Password">
+            <button id="admin-start-btn" style="background: #5cb85c;">Start Game</button>
+            <button id="admin-choose-cond" class="hidden">Choose Conductor</button>
+            <button id="admin-choose-vip" class="hidden">Choose VIP</button>
+            <button id="admin-restart" style="background: #d9534f;">Reset Everything</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <h3>Participants</h3>
+        <ul id="participant-list"></ul>
+    </div>
+</div>
+
+<script>
+    // 1. YOUR FIREBASE CONFIGURATION
+    // Replace these placeholder values with your project's web app credentials
+	const firebaseConfig = {
+	  apiKey: "AIzaSyDLDsHOG05GiK7_M6qpOPcvrWGfW23b9JA",
+	  authDomain: "slua-train.firebaseapp.com",
+	  projectId: "slua-train",
+	  storageBucket: "slua-train.firebasestorage.app",
+	  messagingSenderId: "921691212964",
+	  appId: "1:921691212964:web:ef8bf38225da3dea28ea31",
+	  measurementId: "G-9D798G6HNV"
+	};
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // References
+    const gameRef = db.ref('trainGame');
+    const participantsRef = db.ref('trainGame/participants');
+
+    // UI Elements
+    const nameForm = document.getElementById('name-form');
+    const timerDisplay = document.getElementById('timer-display');
+    const participantListUI = document.getElementById('participant-list');
+    const adminStartBtn = document.getElementById('admin-start-btn');
+    const adminPassInput = document.getElementById('admin-password');
+
+    // 2. LISTEN FOR DATA UPDATES (This updates everyone's screen)
+    gameRef.on('value', (snapshot) => {
+        const data = snapshot.val() || {};
+        
+        // Update Timer
+        if (data.timeLeft !== undefined) {
+            let mins = Math.floor(data.timeLeft / 60);
+            let secs = data.timeLeft % 60;
+            timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Show/Hide Form based on game state
+        if (data.gameState === 'active') {
+            nameForm.classList.remove('hidden');
+            document.getElementById('status-msg').innerText = "Game is LIVE! Enter your name.";
+        } else {
+            nameForm.classList.add('hidden');
+        }
+
+        // Update Results
+        if (data.conductor) {
+            document.getElementById('results-page').classList.remove('hidden');
+            document.getElementById('display-conductor').innerText = data.conductor;
+            if (data.gameState === 'finished') {
+                document.getElementById('admin-choose-cond').classList.add('hidden');
+                document.getElementById('admin-choose-vip').classList.remove('hidden');
+            }
+        }
+        if (data.vip) {
+            document.getElementById('display-vip').innerText = data.vip;
+        }
+    });
+
+    // Listen for Participant List
+    participantsRef.on('value', (snapshot) => {
+        participantListUI.innerHTML = "";
+        snapshot.forEach((child) => {
+            const li = document.createElement('li');
+            li.textContent = "👤 " + child.val();
+            participantListUI.appendChild(li);
+        });
+    });
+
+    // 3. ACTIONS
+    // Join Game
+    nameForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = document.getElementById('nickname').value.trim();
+        
+        participantsRef.once('value', (snap) => {
+            let exists = false;
+            snap.forEach(c => { if(c.val() === name) exists = true; });
+            
+            if (exists) {
+                alert("Name already taken!");
+            } else {
+                participantsRef.push(name);
+                document.getElementById('nickname').value = "";
+            }
+        });
+    });
+
+    // Admin: Start Game
+    adminStartBtn.addEventListener('click', () => {
+        if (adminPassInput.value !== "reaperbalamyt") return alert("Wrong Password!");
+        
+        let seconds = 180;
+        gameRef.update({ gameState: 'active', timeLeft: seconds });
+
+        let interval = setInterval(() => {
+            seconds--;
+            gameRef.update({ timeLeft: Math.max(seconds, 0) });
+            if (seconds <= 0) {
+                clearInterval(interval);
+                gameRef.update({ gameState: 'finished' });
+                document.getElementById('admin-choose-cond').classList.remove('hidden');
+            }
+        }, 1000);
+    });
+
+    // Admin: Choose Conductor
+    document.getElementById('admin-choose-cond').addEventListener('click', () => {
+        participantsRef.once('value', (snap) => {
+            const list = Object.values(snap.val() || {});
+            const winner = list[Math.floor(Math.random() * list.length)];
+            gameRef.update({ conductor: winner });
+        });
+    });
+
+    // Admin: Choose VIP
+    document.getElementById('admin-choose-vip').addEventListener('click', () => {
+        participantsRef.once('value', (snap) => {
+            const list = Object.values(snap.val() || {});
+            gameRef.once('value', (gSnap) => {
+                const conductor = gSnap.val().conductor;
+                const remaining = list.filter(n => n !== conductor);
+                const winner = remaining[Math.floor(Math.random() * remaining.length)];
+                gameRef.update({ vip: winner });
+            });
+        });
+    });
+
+    // Admin: Full Reset
+    document.getElementById('admin-restart').addEventListener('click', () => {
+        if (document.getElementById('admin-password').value === "balamytreaper") {
+            gameRef.set({ gameState: 'waiting', timeLeft: 180 });
+        } else {
+            alert("Enter restart password 'balamytreaper' in the box!");
+        }
+    });
+</script>
+
+</body>
+</html>
