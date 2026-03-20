@@ -3,35 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Train Game Live - Admin Secure</title>
+    <title>Train Game Live - Master Reset Fixed</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
         .main-wrapper { display: flex; max-width: 1000px; margin: auto; gap: 20px; flex-wrap: wrap; }
-        
-        .container { flex: 2; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; min-width: 320px; }
-        .sidebar { flex: 1; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-width: 250px; max-height: 80vh; overflow-y: auto; }
-
+        .container { flex: 2; background: white; padding: 30px; border-radius: 15px; shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; min-width: 320px; }
+        .sidebar { flex: 1; background: white; padding: 20px; border-radius: 15px; shadow: 0 4px 15px rgba(0,0,0,0.1); min-width: 250px; max-height: 80vh; overflow-y: auto; }
         .timer { font-size: 3rem; font-weight: bold; color: #d9534f; margin: 20px 0; font-family: monospace; }
-        .status-badge { padding: 5px 15px; border-radius: 20px; background: #eee; font-size: 0.9rem; font-weight: bold; }
-        
+        .status-badge { padding: 5px 15px; border-radius: 20px; background: #eee; font-size: 0.8rem; font-weight: bold; }
         .hidden { display: none !important; }
         input, button { padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; }
-        
-        button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; font-size: 1rem; transition: 0.2s; }
-        button:hover:not(:disabled) { background: #0056b3; transform: translateY(-1px); }
+        button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; font-size: 1rem; }
+        button:hover:not(:disabled) { background: #0056b3; }
         button:disabled { background: #ccc; cursor: not-allowed; }
-
         .results-box { margin-top: 30px; padding: 20px; border: 2px solid #28a745; background: #f0fff4; border-radius: 12px; }
         .winner-name { color: #28a745; font-size: 1.5rem; font-weight: bold; display: block; margin-top: 5px; }
-
         ul { list-style: none; padding: 0; }
-        li { padding: 10px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; }
-        li::before { content: "👤"; }
-
-        .admin-panel { margin-top: 40px; padding-top: 20px; border-top: 2px dashed #eee; background: #fafafa; padding: 15px; border-radius: 10px; }
-        .admin-label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        li { padding: 10px; border-bottom: 1px solid #f0f0f0; text-align: left; }
+        .admin-panel { margin-top: 40px; padding-top: 20px; border-top: 2px dashed #ccc; }
     </style>
 </head>
 <body>
@@ -39,14 +30,13 @@
 <div class="main-wrapper">
     <div class="container">
         <h1>🚂 Train Game Live</h1>
-        <span id="game-status" class="status-badge">WAITING FOR ADMIN</span>
-        
+        <span id="game-status" class="status-badge">WAITING</span>
         <div class="timer" id="timer-display">03:00</div>
 
         <div id="entry-area" class="hidden">
             <form id="nickname-form">
-                <input type="text" id="nickname-input" placeholder="Enter your unique nickname" required>
-                <button type="submit" id="join-btn">Join Game</button>
+                <input type="text" id="nickname-input" placeholder="Enter unique nickname" required>
+                <button type="submit">Join Game</button>
             </form>
         </div>
 
@@ -59,17 +49,13 @@
         </div>
 
         <div class="admin-panel">
-            <p class="admin-label">Admin Control Panel</p>
             <input type="password" id="admin-pass" placeholder="Admin Password">
-            
-            <button id="btn-start-game" onclick="startGame()">Start Countdown</button>
-            
+            <button id="btn-start-game" onclick="startGame()" style="background: #28a745;">Start Countdown (reaperbalamyt)</button>
             <div id="selection-buttons" class="hidden">
                 <button id="btn-choose-conductor" onclick="pickWinner('conductor')" style="background: #f0ad4e;">Choose Conductor</button>
-                <button id="btn-choose-vip" onclick="pickWinner('vip')" style="background: #5bc0de;">Choose VIP Passenger</button>
+                <button id="btn-choose-vip" onclick="pickWinner('vip')" style="background: #5bc0de;">Choose VIP</button>
             </div>
-
-            <button onclick="resetGame()" style="background: #d9534f; margin-top: 20px;">Master Reset</button>
+            <button onclick="resetGame()" style="background: #d9534f; margin-top: 20px;">Master Reset (balamytreaper)</button>
         </div>
     </div>
 
@@ -80,149 +66,129 @@
 </div>
 
 <script>
-    // --- 1. CONFIGURATION ---
+    // --- 1. CONFIGURATION (REPLACE WITH YOUR KEYS) ---
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
-        projectId: "YOUR_PROJECT",
-        storageBucket: "YOUR_PROJECT.appspot.com",
-        messagingSenderId: "YOUR_ID",
-        appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyDLDsHOG05GiK7_M6qpOPcvrWGfW23b9JA",
+      authDomain: "slua-train.firebaseapp.com",
+      projectId: "slua-train",
+      storageBucket: "slua-train.firebasestorage.app",
+      messagingSenderId: "921691212964",
+      appId: "1:921691212964:web:ef8bf38225da3dea28ea31",
+      measurementId: "G-9D798G6HNV"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
     const gameRef = db.ref('trainGame');
 
-    const passInput = document.getElementById('admin-pass');
-    const resultsArea = document.getElementById('results-area');
-    const entryArea = document.getElementById('entry-area');
+    let activeInterval = null; // To stop the timer loop on reset
 
     // --- 2. LIVE DATA SYNC ---
     gameRef.on('value', (snapshot) => {
         const data = snapshot.val() || {};
         
         // Sync Timer
-        const time = data.timeLeft !== undefined ? data.timeLeft : 180;
+        const time = (data.timeLeft !== undefined) ? data.timeLeft : 180;
         const mins = Math.floor(time / 60);
         const secs = time % 60;
         document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-        // Sync Game State
+        // Sync State & UI
         const status = data.gameState || 'waiting';
         document.getElementById('game-status').innerText = status.toUpperCase();
 
-        // UI Visibility Logic
         if (status === 'active') {
-            entryArea.classList.remove('hidden');
+            document.getElementById('entry-area').classList.remove('hidden');
             document.getElementById('btn-start-game').classList.add('hidden');
             document.getElementById('selection-buttons').classList.add('hidden');
         } else if (status === 'finished') {
-            entryArea.classList.add('hidden');
-            document.getElementById('btn-start-game').classList.add('hidden');
+            document.getElementById('entry-area').classList.add('hidden');
             document.getElementById('selection-buttons').classList.remove('hidden');
         } else {
-            // Waiting state (Reset mode)
-            entryArea.classList.add('hidden');
+            // Waiting/Reset State
+            document.getElementById('entry-area').classList.add('hidden');
             document.getElementById('btn-start-game').classList.remove('hidden');
             document.getElementById('selection-buttons').classList.add('hidden');
-            resultsArea.classList.add('hidden'); // Ensure results are hidden on reset
+            document.getElementById('results-area').classList.add('hidden');
         }
 
-        // Sync Winners
+        // Winners
         if (data.conductor || data.vip) {
-            resultsArea.classList.remove('hidden');
+            document.getElementById('results-area').classList.remove('hidden');
             document.getElementById('res-conductor').innerText = data.conductor || "TBD";
             document.getElementById('res-vip').innerText = data.vip || "TBD";
-            
-            // Lock buttons if value exists
             document.getElementById('btn-choose-conductor').disabled = !!data.conductor;
             document.getElementById('btn-choose-vip').disabled = !!data.vip;
-        } else {
-            // If both are missing from DB, hide the area and reset buttons
-            resultsArea.classList.add('hidden');
-            document.getElementById('btn-choose-conductor').disabled = false;
-            document.getElementById('btn-choose-vip').disabled = false;
         }
 
-        // Sync Participants
-        const listUI = document.getElementById('list-participants');
-        listUI.innerHTML = "";
+        // Participants
         const participants = data.participants ? Object.values(data.participants) : [];
         document.getElementById('player-count').innerText = participants.length;
+        const listUI = document.getElementById('list-participants');
+        listUI.innerHTML = "";
         participants.forEach(name => {
             const li = document.createElement('li');
-            li.textContent = name;
+            li.textContent = "👤 " + name;
             listUI.appendChild(li);
         });
     });
 
-    // --- 3. PLAYER ACTIONS ---
+    // --- 3. ACTIONS ---
     document.getElementById('nickname-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        const nameInput = document.getElementById('nickname-input');
-        const name = nameInput.value.trim();
-        
+        const input = document.getElementById('nickname-input');
+        const name = input.value.trim();
         gameRef.child('participants').once('value', (snap) => {
-            const currentPlayers = snap.val() ? Object.values(snap.val()) : [];
-            if (currentPlayers.includes(name)) {
-                alert("This name is already taken!");
-            } else {
-                gameRef.child('participants').push(name);
-                nameInput.value = "";
-                // Note: We don't disable the button here globally so people can fix typos 
-                // but the form will hide when the timer ends.
-            }
+            const players = snap.val() ? Object.values(snap.val()) : [];
+            if (players.includes(name)) return alert("Name taken!");
+            gameRef.child('participants').push(name);
+            input.value = "";
         });
     });
 
-    // --- 4. ADMIN ACTIONS ---
     function startGame() {
-        if (passInput.value !== "reaperbalamyt") return alert("Wrong Admin Password!");
-        
+        if (document.getElementById('admin-pass').value !== "reaperbalamyt") return alert("Wrong Password!");
         let timeLeft = 180;
         gameRef.update({ gameState: 'active', timeLeft: timeLeft });
-
-        // Timer handled by admin browser
-        const timer = setInterval(() => {
+        
+        if(activeInterval) clearInterval(activeInterval);
+        activeInterval = setInterval(() => {
             timeLeft--;
-            gameRef.child('timeLeft').set(timeLeft);
+            gameRef.child('timeLeft').set(Math.max(timeLeft, 0));
             if (timeLeft <= 0) {
-                clearInterval(timer);
+                clearInterval(activeInterval);
                 gameRef.child('gameState').set('finished');
             }
         }, 1000);
     }
 
     function pickWinner(type) {
-        if (passInput.value !== "reaperbalamyt") return alert("Wrong Admin Password!");
-
+        if (document.getElementById('admin-pass').value !== "reaperbalamyt") return alert("Wrong Password!");
         gameRef.once('value', (snap) => {
             const data = snap.val();
             const players = data.participants ? Object.values(data.participants) : [];
-            
-            if (players.length < 1) return alert("No players joined!");
+            if (players.length < 1) return alert("No players!");
 
             if (type === 'conductor') {
                 const winner = players[Math.floor(Math.random() * players.length)];
                 gameRef.child('conductor').set(winner);
-            } else if (type === 'vip') {
-                const conductor = data.conductor;
-                const remaining = players.filter(p => p !== conductor);
-                if (remaining.length === 0) return alert("Not enough players for VIP!");
-                
+            } else {
+                const remaining = players.filter(p => p !== data.conductor);
+                if (remaining.length === 0) return alert("No one left for VIP!");
                 const winner = remaining[Math.floor(Math.random() * remaining.length)];
                 gameRef.child('vip').set(winner);
             }
         });
     }
 
-    // FIXED MASTER RESET
+    // MASTER RESET FIX
     function resetGame() {
-        if (passInput.value !== "balamytreaper") return alert("Wrong Restart Password!");
+        if (document.getElementById('admin-pass').value !== "balamytreaper") return alert("Wrong Restart Password!");
         
-        // This clears the entire object and resets to defaults
+        // 1. Stop the local interval loop immediately
+        if(activeInterval) clearInterval(activeInterval);
+        
+        // 2. Clear Firebase entirely
         gameRef.set({
             gameState: 'waiting',
             timeLeft: 180,
@@ -230,10 +196,8 @@
             conductor: null,
             vip: null
         }).then(() => {
-            alert("Game Reset Successfully!");
-            passInput.value = ""; // Clear password field
-        }).catch(err => {
-            console.error("Reset failed: ", err);
+            alert("Master Reset Complete. Page will refresh.");
+            location.reload(); // 3. Refresh to clear all local app states
         });
     }
 </script>
