@@ -82,13 +82,13 @@
 <script>
     // --- 1. CONFIGURATION ---
     const firebaseConfig = {
-     apiKey: "AIzaSyDLDsHOG05GiK7_M6qpOPcvrWGfW23b9JA",
-     authDomain: "slua-train.firebaseapp.com",
-     projectId: "slua-train",
-     storageBucket: "slua-train.firebasestorage.app",
-     messagingSenderId: "921691212964",
-     appId: "1:921691212964:web:ef8bf38225da3dea28ea31",
-     measurementId: "G-9D798G6HNV"
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -96,13 +96,15 @@
     const gameRef = db.ref('trainGame');
 
     const passInput = document.getElementById('admin-pass');
+    const resultsArea = document.getElementById('results-area');
+    const entryArea = document.getElementById('entry-area');
 
     // --- 2. LIVE DATA SYNC ---
     gameRef.on('value', (snapshot) => {
         const data = snapshot.val() || {};
         
         // Sync Timer
-        const time = data.timeLeft || 180;
+        const time = data.timeLeft !== undefined ? data.timeLeft : 180;
         const mins = Math.floor(time / 60);
         const secs = time % 60;
         document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
@@ -113,32 +115,33 @@
 
         // UI Visibility Logic
         if (status === 'active') {
-            document.getElementById('entry-area').classList.remove('hidden');
+            entryArea.classList.remove('hidden');
             document.getElementById('btn-start-game').classList.add('hidden');
+            document.getElementById('selection-buttons').classList.add('hidden');
         } else if (status === 'finished') {
-            document.getElementById('entry-area').classList.add('hidden');
+            entryArea.classList.add('hidden');
+            document.getElementById('btn-start-game').classList.add('hidden');
             document.getElementById('selection-buttons').classList.remove('hidden');
         } else {
-            document.getElementById('entry-area').classList.add('hidden');
-            document.getElementById('selection-buttons').classList.add('hidden');
+            // Waiting state (Reset mode)
+            entryArea.classList.add('hidden');
             document.getElementById('btn-start-game').classList.remove('hidden');
+            document.getElementById('selection-buttons').classList.add('hidden');
+            resultsArea.classList.add('hidden'); // Ensure results are hidden on reset
         }
 
         // Sync Winners
         if (data.conductor || data.vip) {
-            document.getElementById('results-area').classList.remove('hidden');
-            if (data.conductor) {
-                document.getElementById('res-conductor').innerText = data.conductor;
-                document.getElementById('btn-choose-conductor').disabled = true; // Disable if already chosen
-            }
-            if (data.vip) {
-                document.getElementById('res-vip').innerText = data.vip;
-                document.getElementById('btn-choose-vip').disabled = true; // Disable if already chosen
-            }
+            resultsArea.classList.remove('hidden');
+            document.getElementById('res-conductor').innerText = data.conductor || "TBD";
+            document.getElementById('res-vip').innerText = data.vip || "TBD";
+            
+            // Lock buttons if value exists
+            document.getElementById('btn-choose-conductor').disabled = !!data.conductor;
+            document.getElementById('btn-choose-vip').disabled = !!data.vip;
         } else {
-            document.getElementById('results-area').classList.add('hidden');
-            document.getElementById('res-conductor').innerText = "TBD";
-            document.getElementById('res-vip').innerText = "TBD";
+            // If both are missing from DB, hide the area and reset buttons
+            resultsArea.classList.add('hidden');
             document.getElementById('btn-choose-conductor').disabled = false;
             document.getElementById('btn-choose-vip').disabled = false;
         }
@@ -158,7 +161,8 @@
     // --- 3. PLAYER ACTIONS ---
     document.getElementById('nickname-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        const name = document.getElementById('nickname-input').value.trim();
+        const nameInput = document.getElementById('nickname-input');
+        const name = nameInput.value.trim();
         
         gameRef.child('participants').once('value', (snap) => {
             const currentPlayers = snap.val() ? Object.values(snap.val()) : [];
@@ -166,9 +170,9 @@
                 alert("This name is already taken!");
             } else {
                 gameRef.child('participants').push(name);
-                document.getElementById('nickname-input').value = "";
-                document.getElementById('join-btn').disabled = true;
-                document.getElementById('join-btn').innerText = "Signed Up!";
+                nameInput.value = "";
+                // Note: We don't disable the button here globally so people can fix typos 
+                // but the form will hide when the timer ends.
             }
         });
     });
@@ -180,6 +184,7 @@
         let timeLeft = 180;
         gameRef.update({ gameState: 'active', timeLeft: timeLeft });
 
+        // Timer handled by admin browser
         const timer = setInterval(() => {
             timeLeft--;
             gameRef.child('timeLeft').set(timeLeft);
@@ -197,32 +202,39 @@
             const data = snap.val();
             const players = data.participants ? Object.values(data.participants) : [];
             
-            if (players.length < 2) return alert("Not enough players!");
+            if (players.length < 1) return alert("No players joined!");
 
             if (type === 'conductor') {
                 const winner = players[Math.floor(Math.random() * players.length)];
                 gameRef.child('conductor').set(winner);
             } else if (type === 'vip') {
                 const conductor = data.conductor;
-                if (!conductor) return alert("Pick a conductor first!");
                 const remaining = players.filter(p => p !== conductor);
+                if (remaining.length === 0) return alert("Not enough players for VIP!");
+                
                 const winner = remaining[Math.floor(Math.random() * remaining.length)];
                 gameRef.child('vip').set(winner);
             }
         });
     }
 
+    // FIXED MASTER RESET
     function resetGame() {
         if (passInput.value !== "balamytreaper") return alert("Wrong Restart Password!");
+        
+        // This clears the entire object and resets to defaults
         gameRef.set({
             gameState: 'waiting',
             timeLeft: 180,
             participants: null,
             conductor: null,
             vip: null
+        }).then(() => {
+            alert("Game Reset Successfully!");
+            passInput.value = ""; // Clear password field
+        }).catch(err => {
+            console.error("Reset failed: ", err);
         });
-        document.getElementById('join-btn').disabled = false;
-        document.getElementById('join-btn').innerText = "Join Game";
     }
 </script>
 
