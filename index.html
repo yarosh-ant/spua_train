@@ -3,23 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Train Game Live</title>
+    <title>Train Game Live - Admin Secure</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; }
-        .main-wrapper { display: flex; max-width: 900px; margin: auto; gap: 20px; }
-        .container, .sidebar { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .container { flex: 2; text-align: center; }
-        .sidebar { flex: 1; max-height: 80vh; overflow-y: auto; }
-        .timer { font-size: 2.5rem; font-weight: bold; color: #d9534f; margin: 15px 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .main-wrapper { display: flex; max-width: 1000px; margin: auto; gap: 20px; flex-wrap: wrap; }
+        
+        .container { flex: 2; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; min-width: 320px; }
+        .sidebar { flex: 1; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); min-width: 250px; max-height: 80vh; overflow-y: auto; }
+
+        .timer { font-size: 3rem; font-weight: bold; color: #d9534f; margin: 20px 0; font-family: monospace; }
+        .status-badge { padding: 5px 15px; border-radius: 20px; background: #eee; font-size: 0.9rem; font-weight: bold; }
+        
         .hidden { display: none !important; }
-        input, button { padding: 12px; margin: 5px; border-radius: 6px; border: 1px solid #ddd; width: 90%; }
-        button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; }
-        .results { margin-top: 20px; padding: 15px; border: 2px solid #28a745; background: #e9f7ef; border-radius: 8px; }
-        ul { list-style: none; padding: 0; text-align: left; }
-        li { padding: 8px; border-bottom: 1px solid #eee; }
-        .admin-controls { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
+        input, button { padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; width: 100%; box-sizing: border-box; }
+        
+        button { cursor: pointer; background: #007bff; color: white; border: none; font-weight: bold; font-size: 1rem; transition: 0.2s; }
+        button:hover:not(:disabled) { background: #0056b3; transform: translateY(-1px); }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+
+        .results-box { margin-top: 30px; padding: 20px; border: 2px solid #28a745; background: #f0fff4; border-radius: 12px; }
+        .winner-name { color: #28a745; font-size: 1.5rem; font-weight: bold; display: block; margin-top: 5px; }
+
+        ul { list-style: none; padding: 0; }
+        li { padding: 10px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 10px; }
+        li::before { content: "👤"; }
+
+        .admin-panel { margin-top: 40px; padding-top: 20px; border-top: 2px dashed #eee; background: #fafafa; padding: 15px; border-radius: 10px; }
+        .admin-label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
     </style>
 </head>
 <body>
@@ -27,175 +39,191 @@
 <div class="main-wrapper">
     <div class="container">
         <h1>🚂 Train Game Live</h1>
-
-        <div id="status-msg">Waiting for Admin to start...</div>
+        <span id="game-status" class="status-badge">WAITING FOR ADMIN</span>
+        
         <div class="timer" id="timer-display">03:00</div>
 
-        <form id="name-form" class="hidden">
-            <input type="text" id="nickname" placeholder="Your Nickname" required>
-            <button type="submit">Join Game</button>
-        </form>
+        <div id="entry-area" class="hidden">
+            <form id="nickname-form">
+                <input type="text" id="nickname-input" placeholder="Enter your unique nickname" required>
+                <button type="submit" id="join-btn">Join Game</button>
+            </form>
+        </div>
 
-        <div id="results-page" class="hidden">
-            <div class="results">
-                <h3>🏆 Results</h3>
-                <p><strong>Conductor:</strong> <span id="display-conductor">-</span></p>
-                <p><strong>VIP:</strong> <span id="display-vip">-</span></p>
+        <div id="results-area" class="hidden">
+            <div class="results-box">
+                <div><strong>Train Conductor:</strong> <span id="res-conductor" class="winner-name">TBD</span></div>
+                <hr style="margin: 15px 0; border: 0; border-top: 1px solid #c3e6cb;">
+                <div><strong>VIP Passenger:</strong> <span id="res-vip" class="winner-name">TBD</span></div>
             </div>
         </div>
 
-        <div class="admin-controls">
-            <input type="password" id="admin-password" placeholder="Admin Password">
-            <button id="admin-start-btn" style="background: #5cb85c;">Start Game</button>
-            <button id="admin-choose-cond" class="hidden">Choose Conductor</button>
-            <button id="admin-choose-vip" class="hidden">Choose VIP</button>
-            <button id="admin-restart" style="background: #d9534f;">Reset Everything</button>
+        <div class="admin-panel">
+            <p class="admin-label">Admin Control Panel</p>
+            <input type="password" id="admin-pass" placeholder="Admin Password">
+            
+            <button id="btn-start-game" onclick="startGame()">Start Countdown</button>
+            
+            <div id="selection-buttons" class="hidden">
+                <button id="btn-choose-conductor" onclick="pickWinner('conductor')" style="background: #f0ad4e;">Choose Conductor</button>
+                <button id="btn-choose-vip" onclick="pickWinner('vip')" style="background: #5bc0de;">Choose VIP Passenger</button>
+            </div>
+
+            <button onclick="resetGame()" style="background: #d9534f; margin-top: 20px;">Master Reset</button>
         </div>
     </div>
 
     <div class="sidebar">
-        <h3>Participants</h3>
-        <ul id="participant-list"></ul>
+        <h3>Participants (<span id="player-count">0</span>)</h3>
+        <ul id="list-participants"></ul>
     </div>
 </div>
 
 <script>
-    // 1. YOUR FIREBASE CONFIGURATION
-    // Replace these placeholder values with your project's web app credentials
+    // --- 1. CONFIGURATION ---
     const firebaseConfig = {
-        apiKey: "AIzaSyDLDsHOG05GiK7_M6qpOPcvrWGfW23b9JA",
-        authDomain: "slua-train.firebaseapp.com",
-        projectId: "slua-train",
-        storageBucket: "slua-train.firebasestorage.app",
-        messagingSenderId: "921691212964",
-        appId: "1:921691212964:web:ef8bf38225da3dea28ea31",
-        measurementId: "G-9D798G6HNV"
+     apiKey: "AIzaSyDLDsHOG05GiK7_M6qpOPcvrWGfW23b9JA",
+     authDomain: "slua-train.firebaseapp.com",
+     projectId: "slua-train",
+     storageBucket: "slua-train.firebasestorage.app",
+     messagingSenderId: "921691212964",
+     appId: "1:921691212964:web:ef8bf38225da3dea28ea31",
+     measurementId: "G-9D798G6HNV"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
-    // References
     const gameRef = db.ref('trainGame');
-    const participantsRef = db.ref('trainGame/participants');
 
-    // UI Elements
-    const nameForm = document.getElementById('name-form');
-    const timerDisplay = document.getElementById('timer-display');
-    const participantListUI = document.getElementById('participant-list');
-    const adminStartBtn = document.getElementById('admin-start-btn');
-    const adminPassInput = document.getElementById('admin-password');
+    const passInput = document.getElementById('admin-pass');
 
-    // 2. LISTEN FOR DATA UPDATES (This updates everyone's screen)
+    // --- 2. LIVE DATA SYNC ---
     gameRef.on('value', (snapshot) => {
         const data = snapshot.val() || {};
         
-        // Update Timer
-        if (data.timeLeft !== undefined) {
-            let mins = Math.floor(data.timeLeft / 60);
-            let secs = data.timeLeft % 60;
-            timerDisplay.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
+        // Sync Timer
+        const time = data.timeLeft || 180;
+        const mins = Math.floor(time / 60);
+        const secs = time % 60;
+        document.getElementById('timer-display').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 
-        // Show/Hide Form based on game state
-        if (data.gameState === 'active') {
-            nameForm.classList.remove('hidden');
-            document.getElementById('status-msg').innerText = "Game is LIVE! Enter your name.";
+        // Sync Game State
+        const status = data.gameState || 'waiting';
+        document.getElementById('game-status').innerText = status.toUpperCase();
+
+        // UI Visibility Logic
+        if (status === 'active') {
+            document.getElementById('entry-area').classList.remove('hidden');
+            document.getElementById('btn-start-game').classList.add('hidden');
+        } else if (status === 'finished') {
+            document.getElementById('entry-area').classList.add('hidden');
+            document.getElementById('selection-buttons').classList.remove('hidden');
         } else {
-            nameForm.classList.add('hidden');
+            document.getElementById('entry-area').classList.add('hidden');
+            document.getElementById('selection-buttons').classList.add('hidden');
+            document.getElementById('btn-start-game').classList.remove('hidden');
         }
 
-        // Update Results
-        if (data.conductor) {
-            document.getElementById('results-page').classList.remove('hidden');
-            document.getElementById('display-conductor').innerText = data.conductor;
-            if (data.gameState === 'finished') {
-                document.getElementById('admin-choose-cond').classList.add('hidden');
-                document.getElementById('admin-choose-vip').classList.remove('hidden');
+        // Sync Winners
+        if (data.conductor || data.vip) {
+            document.getElementById('results-area').classList.remove('hidden');
+            if (data.conductor) {
+                document.getElementById('res-conductor').innerText = data.conductor;
+                document.getElementById('btn-choose-conductor').disabled = true; // Disable if already chosen
             }
+            if (data.vip) {
+                document.getElementById('res-vip').innerText = data.vip;
+                document.getElementById('btn-choose-vip').disabled = true; // Disable if already chosen
+            }
+        } else {
+            document.getElementById('results-area').classList.add('hidden');
+            document.getElementById('res-conductor').innerText = "TBD";
+            document.getElementById('res-vip').innerText = "TBD";
+            document.getElementById('btn-choose-conductor').disabled = false;
+            document.getElementById('btn-choose-vip').disabled = false;
         }
-        if (data.vip) {
-            document.getElementById('display-vip').innerText = data.vip;
-        }
-    });
 
-    // Listen for Participant List
-    participantsRef.on('value', (snapshot) => {
-        participantListUI.innerHTML = "";
-        snapshot.forEach((child) => {
+        // Sync Participants
+        const listUI = document.getElementById('list-participants');
+        listUI.innerHTML = "";
+        const participants = data.participants ? Object.values(data.participants) : [];
+        document.getElementById('player-count').innerText = participants.length;
+        participants.forEach(name => {
             const li = document.createElement('li');
-            li.textContent = "👤 " + child.val();
-            participantListUI.appendChild(li);
+            li.textContent = name;
+            listUI.appendChild(li);
         });
     });
 
-    // 3. ACTIONS
-    // Join Game
-    nameForm.addEventListener('submit', (e) => {
+    // --- 3. PLAYER ACTIONS ---
+    document.getElementById('nickname-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        const name = document.getElementById('nickname').value.trim();
+        const name = document.getElementById('nickname-input').value.trim();
         
-        participantsRef.once('value', (snap) => {
-            let exists = false;
-            snap.forEach(c => { if(c.val() === name) exists = true; });
-            
-            if (exists) {
-                alert("Name already taken!");
+        gameRef.child('participants').once('value', (snap) => {
+            const currentPlayers = snap.val() ? Object.values(snap.val()) : [];
+            if (currentPlayers.includes(name)) {
+                alert("This name is already taken!");
             } else {
-                participantsRef.push(name);
-                document.getElementById('nickname').value = "";
+                gameRef.child('participants').push(name);
+                document.getElementById('nickname-input').value = "";
+                document.getElementById('join-btn').disabled = true;
+                document.getElementById('join-btn').innerText = "Signed Up!";
             }
         });
     });
 
-    // Admin: Start Game
-    adminStartBtn.addEventListener('click', () => {
-        if (adminPassInput.value !== "reaperbalamyt") return alert("Wrong Password!");
+    // --- 4. ADMIN ACTIONS ---
+    function startGame() {
+        if (passInput.value !== "reaperbalamyt") return alert("Wrong Admin Password!");
         
-        let seconds = 180;
-        gameRef.update({ gameState: 'active', timeLeft: seconds });
+        let timeLeft = 180;
+        gameRef.update({ gameState: 'active', timeLeft: timeLeft });
 
-        let interval = setInterval(() => {
-            seconds--;
-            gameRef.update({ timeLeft: Math.max(seconds, 0) });
-            if (seconds <= 0) {
-                clearInterval(interval);
-                gameRef.update({ gameState: 'finished' });
-                document.getElementById('admin-choose-cond').classList.remove('hidden');
+        const timer = setInterval(() => {
+            timeLeft--;
+            gameRef.child('timeLeft').set(timeLeft);
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                gameRef.child('gameState').set('finished');
             }
         }, 1000);
-    });
+    }
 
-    // Admin: Choose Conductor
-    document.getElementById('admin-choose-cond').addEventListener('click', () => {
-        participantsRef.once('value', (snap) => {
-            const list = Object.values(snap.val() || {});
-            const winner = list[Math.floor(Math.random() * list.length)];
-            gameRef.update({ conductor: winner });
-        });
-    });
+    function pickWinner(type) {
+        if (passInput.value !== "reaperbalamyt") return alert("Wrong Admin Password!");
 
-    // Admin: Choose VIP
-    document.getElementById('admin-choose-vip').addEventListener('click', () => {
-        participantsRef.once('value', (snap) => {
-            const list = Object.values(snap.val() || {});
-            gameRef.once('value', (gSnap) => {
-                const conductor = gSnap.val().conductor;
-                const remaining = list.filter(n => n !== conductor);
+        gameRef.once('value', (snap) => {
+            const data = snap.val();
+            const players = data.participants ? Object.values(data.participants) : [];
+            
+            if (players.length < 2) return alert("Not enough players!");
+
+            if (type === 'conductor') {
+                const winner = players[Math.floor(Math.random() * players.length)];
+                gameRef.child('conductor').set(winner);
+            } else if (type === 'vip') {
+                const conductor = data.conductor;
+                if (!conductor) return alert("Pick a conductor first!");
+                const remaining = players.filter(p => p !== conductor);
                 const winner = remaining[Math.floor(Math.random() * remaining.length)];
-                gameRef.update({ vip: winner });
-            });
+                gameRef.child('vip').set(winner);
+            }
         });
-    });
+    }
 
-    // Admin: Full Reset
-    document.getElementById('admin-restart').addEventListener('click', () => {
-        if (document.getElementById('admin-password').value === "balamytreaper") {
-            gameRef.set({ gameState: 'waiting', timeLeft: 180 });
-        } else {
-            alert("Enter restart password 'balamytreaper' in the box!");
-        }
-    });
+    function resetGame() {
+        if (passInput.value !== "balamytreaper") return alert("Wrong Restart Password!");
+        gameRef.set({
+            gameState: 'waiting',
+            timeLeft: 180,
+            participants: null,
+            conductor: null,
+            vip: null
+        });
+        document.getElementById('join-btn').disabled = false;
+        document.getElementById('join-btn').innerText = "Join Game";
+    }
 </script>
 
 </body>
